@@ -6,7 +6,7 @@ import time
 import streamlit as st
 import streamlit.components.v1 as components
 
-from automata import KINDS, MODES, build, suggestions
+from automata import CONDITIONS, KINDS, MODES, build, build_custom, suggestions
 from diagram import HEIGHT, diagram_html
 from fireworks import fireworks_html
 
@@ -182,7 +182,7 @@ st.markdown(
 )
 
 st.caption(
-    "Describe a string. Summon a machine. "
+    "Describe a string or language. Summon a machine. "
     "Then watch it think, one symbol at a time."
 )
 
@@ -195,26 +195,86 @@ with st.sidebar:
 
     st.header("Build the machine")
 
-    word = st.text_input(
-        "Target string",
-        value="abba"
-    ).strip()
+    mode = st.selectbox(
+        "Language accepted",
+        list(MODES),
+        format_func=MODES.get
+    )
+
+    condition_inputs = {}
+    if mode == "custom":
+        selected_conditions = st.multiselect(
+            "Conditions to combine",
+            list(CONDITIONS),
+            format_func=CONDITIONS.get,
+            help="Choose conditions such as Starts with 'a' and Ends with 'b', then combine with AND or OR."
+        )
+        condition_logic = st.selectbox("How to combine the selected conditions", ["AND", "OR"])
+        empty_string = st.selectbox("Empty string (ε)", ["Either", "Accept", "Reject"])
+        for condition in selected_conditions:
+            if condition in ("exact", "starts", "ends", "contains", "not_starts", "not_ends", "not_contains", "prefix"):
+                field = "pattern" if condition == "prefix" else "string"
+                condition_inputs[condition] = {
+                    "pattern": st.text_input(
+                        f"String: {CONDITIONS[condition]}", key=f"condition_{condition}"
+                    )
+                } if field == "pattern" else st.text_input(
+                    f"String: {CONDITIONS[condition]}", key=f"condition_{condition}"
+                )
+            elif condition in ("at_least", "at_most", "exactly_count"):
+                condition_inputs[condition] = {
+                    "symbols": st.text_input(
+                        "Symbol(s), comma separated", key=f"condition_{condition}_symbols",
+                        help="For example: a,b applies the same count rule to both symbols."
+                    ),
+                    "count": st.number_input("N", min_value=0, max_value=500, step=1, key=f"condition_{condition}_count")
+                }
+            elif condition in ("even_count", "odd_count"):
+                condition_inputs[condition] = {
+                    "symbols": st.text_input(
+                        "Symbol(s), comma separated", key=f"condition_{condition}_symbols"
+                    )
+                }
+            elif condition in ("no_adjacent", "suffix_any"):
+                condition_inputs[condition] = {
+                    "patterns": st.text_input(
+                        "Patterns separated by |", key=f"condition_{condition}_patterns",
+                        help="Example: 00|11"
+                    )
+                }
+            elif condition == "followed_by":
+                before, after = st.columns(2)
+                condition_inputs[condition] = {
+                    "before": before.text_input("Symbol that needs a follower", key="condition_followed_before", max_chars=1),
+                    "after": after.text_input("Required next symbol", key="condition_followed_after", max_chars=1)
+                }
+            elif condition == "divisible":
+                condition_inputs[condition] = {
+                    "divisor": st.number_input("Divisor", min_value=1, max_value=500, value=3, step=1, key="condition_divisor")
+                }
+            elif condition == "position_end":
+                symbol, position = st.columns(2)
+                condition_inputs[condition] = {
+                    "symbol": symbol.text_input("Required symbol", key="condition_position_symbol", max_chars=1),
+                    "position": position.number_input("Position from end (1 = last)", min_value=1, max_value=8, value=2, step=1, key="condition_position")
+                }
+        word = ""
+    else:
+        word = st.text_input(
+            "Target string",
+            value="abba"
+        ).strip()
+        condition_logic, empty_string = "AND", "Either"
 
     alpha_raw = st.text_input(
         "Alphabet (optional)",
-        placeholder="auto from string, e.g. a,b"
+        placeholder="auto from strings, e.g. a,b"
     )
 
     kind = st.selectbox(
         "Automaton type",
         list(KINDS),
         format_func=KINDS.get
-    )
-
-    mode = st.selectbox(
-        "Language accepted",
-        list(MODES),
-        format_func=MODES.get
     )
 
     streak_box = st.empty()
@@ -225,11 +285,25 @@ raw = "".join(
     if not ch.isspace() and ch != ","
 )
 
-alphabet = sorted(set(raw or word))
+language_symbols = word
+for value in condition_inputs.values():
+    if isinstance(value, dict):
+        language_symbols += "".join(
+            str(item).replace(",", "").replace("|", "")
+            for key, item in value.items()
+            if key in ("symbols", "patterns", "pattern", "before", "after", "symbol")
+        )
+    else:
+        language_symbols += str(value).replace(",", "").replace("|", "")
+alphabet = sorted(set(raw or language_symbols))
 
 
 try:
-    auto = build(word, alphabet, kind, mode)
+    if mode == "custom" and not condition_inputs:
+        st.info("Choose at least one condition to build a custom language.")
+        st.stop()
+    auto = (build_custom(alphabet, kind, condition_inputs, condition_logic, empty_string) if mode == "custom"
+            else build(word, alphabet, kind, mode))
 
 except ValueError as err:
     st.error(str(err))
@@ -252,7 +326,7 @@ for k, v in {
     S.setdefault(k, v)
 
 
-sig = (word, tuple(alphabet), kind, mode)
+sig = (word, tuple(alphabet), kind, mode, repr(sorted(condition_inputs.items())), condition_logic, empty_string)
 
 if S.get("sig") != sig:
 
@@ -267,12 +341,39 @@ if S.get("sig") != sig:
         fired=False,
         playing=False
     )
-
+if mode == "custom":
+    rules = []
+    for condition, value in condition_inputs.items():
+        if isinstance(value, dict):
+            if condition in ("at_least", "at_most", "exactly_count"):
+                detail = f"{CONDITIONS[condition].replace('N', str(value['count']))} {value['symbols']}"
+            elif condition in ("even_count", "odd_count"):
+                detail = f"{CONDITIONS[condition]}: {value['symbols']}"
+            elif condition == "followed_by":
+                detail = f"Every {value['before']} is followed by {value['after']}"
+            elif condition == "divisible":
+                detail = f"Binary value divisible by {value['divisor']}"
+            elif condition == "position_end":
+                detail = f"{value['position']} from end is {value['symbol']}"
+            else:
+                detail = f"{CONDITIONS[condition]} {value.get('patterns', value.get('pattern', ''))}"
+        else:
+            detail = f"{CONDITIONS[condition]} “{value}”"
+        rules.append(detail)
+    connector = " and " if condition_logic == "AND" else " or "
+    accepted_description = (
+        f"all selected conditions: {connector.join(rules)}"
+        if condition_logic == "AND"
+        else f"any selected condition: {connector.join(rules)}"
+    )
+    if empty_string != "Either":
+        accepted_description += f"; empty string: {empty_string.lower()}"
+else:
+    accepted_description = f"{MODES[mode].lower()} “{word}”"
 
 st.success(
     f"{KINDS[kind]} with {auto.n} states over "
-    f"{{{', '.join(alphabet)}}}, "
-    f"accepting: {MODES[mode].lower()} “{word}”. "
+    f"{{{', '.join(alphabet)}}}; language: {accepted_description}. "
     "Double circle = accepting."
 )
 
@@ -311,7 +412,13 @@ def pick(x):
     S.test = x
 
 
-chips = suggestions(word, alphabet)
+suggestion_word = word
+if not suggestion_word and condition_inputs:
+    first_value = next(iter(condition_inputs.values()))
+    suggestion_word = (next((str(v) for k, v in first_value.items()
+                             if k in ("pattern", "patterns", "symbols") and v), "")
+                       if isinstance(first_value, dict) else first_value)
+chips = suggestions(suggestion_word, alphabet)
 
 cols = st.columns([1] + [2] * len(chips))
 
