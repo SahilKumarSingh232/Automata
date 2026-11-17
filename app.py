@@ -491,6 +491,14 @@ def toggle_play():
         S.playing = True
 
 
+def run_to_end():
+    """Play the remaining input one transition at a time."""
+    if S.step >= last:
+        S.step = 0
+    S.playing = True
+    S.fired = False
+
+
 # ---------------------------------------------------------
 # BUTTONS
 # ---------------------------------------------------------
@@ -520,8 +528,7 @@ b3.button(
 
 b4.button(
     "Run to end",
-    on_click=jump,
-    args=(last,),
+    on_click=run_to_end,
     use_container_width=True
 )
 
@@ -721,3 +728,5 @@ if S.playing:
     else:
 
         S.playing = False
+
+        st.rerun()
