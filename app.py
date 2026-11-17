@@ -20,10 +20,37 @@ st.markdown(
     """
 <style>
 .stApp {
-    background:
-        radial-gradient(ellipse 80% 45% at 50% -10%,#3a1478 0%,transparent 70%),
-        radial-gradient(ellipse 60% 40% at 100% 100%,#0c2f6b 0%,transparent 70%),
-        #07040f;
+    background:#000!important;
+    color:#fff;
+}
+
+.stApp [data-testid="stAppViewContainer"],
+.stApp [data-testid="stSidebar"] {
+    background:#000!important;
+}
+
+.stApp p,
+.stApp label,
+.stApp span,
+.stApp li,
+.stApp [data-testid="stMarkdownContainer"],
+.stApp [data-testid="stCaptionContainer"] {
+    color:#fff;
+}
+
+.stApp input,
+.stApp textarea,
+.stApp [data-baseweb="select"] * {
+    color:#fff!important;
+}
+
+.stApp input::placeholder,
+.stApp textarea::placeholder {
+    color:#ccc!important;
+}
+
+.stApp [data-testid="stAlert"] * {
+    color:#fff!important;
 }
 
 .stApp::before {
@@ -44,14 +71,8 @@ st.markdown(
 .hero {
     font:700 2.8rem/1.1 Georgia,serif;
     margin:0;
-    background:linear-gradient(
-        100deg,#8b5cf6,#c9f0ff,#f5c451,#c9f0ff,#8b5cf6
-    );
-    background-size:300% 100%;
-    -webkit-background-clip:text;
-    background-clip:text;
-    color:transparent;
-    animation:rise .7s both,flow 9s linear infinite;
+    color:#fff;
+    animation:rise .7s both;
 }
 
 .tape {
@@ -74,13 +95,13 @@ st.markdown(
 .tape .done {
     background:rgba(110,231,168,.16);
     border-color:#6ee7a8;
-    color:#6ee7a8;
+    color:#fff;
 }
 
 .tape .cur {
-    background:#6fd3ff;
-    border-color:#6fd3ff;
-    color:#04101f;
+    background:#1d4ed8;
+    border-color:#60a5fa;
+    color:#fff;
     transform:translateY(-5px);
     animation:tick .4s;
 }
@@ -95,17 +116,14 @@ st.markdown(
 }
 
 .verdict.ok {
-    background:linear-gradient(
-        100deg,#6ee7a8,#e6fff0,#f5c451,#6ee7a8
-    );
-    background-size:300% 100%;
-    color:#06301a;
-    animation:pop .5s,flow 3s linear infinite;
+    background:#14532d;
+    color:#fff;
+    animation:pop .5s;
 }
 
 .verdict.bad {
-    background:#ff8fa3;
-    color:#3a0a16;
+    background:#7f1d1d;
+    color:#fff;
 }
 
 .stButton>button {

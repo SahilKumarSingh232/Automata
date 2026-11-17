@@ -11,15 +11,15 @@ HEIGHT = 392
 _TEMPLATE = r"""
 <style>
 html,body{margin:0;background:transparent;font-family:ui-monospace,Menlo,Consolas,monospace}
-#w{overflow-x:auto;border:1px solid rgba(111,211,255,.34);border-radius:12px;background:rgba(10,3,40,.45)}
-text{fill:#eaf2ff}
+#w{overflow-x:auto;border:1px solid #444;border-radius:12px;background:#000}
+text{fill:#fff}
 .st{fill:#1a0f38;stroke:#a9c9ff;stroke-width:1.8}
-.st.on{fill:#7fd9ff;stroke:#f5c451;stroke-width:2.5;animation:glow 1.3s ease-in-out infinite}
-text.sl.on{fill:#04101f;font-weight:700}
+.st.on{fill:#1d4ed8;stroke:#f5c451;stroke-width:2.5;animation:glow 1.3s ease-in-out infinite}
+text.sl.on{fill:#fff;font-weight:700}
 .ed{fill:none;stroke:#9a8bdc;stroke-width:1.5}
 .ed.on{stroke:#f5c451;stroke-width:3}
 .ed.on:not([style]){stroke-dasharray:9 6;animation:dash .9s linear infinite}
-.lb{font-size:12px;fill:#9fb0e0}.lb.on{fill:#ffe08a;font-weight:700}
+.lb{font-size:12px;fill:#fff}.lb.on{fill:#ffe08a;font-weight:700}
 .intro .st,.intro .st.on,.intro text.sl{transform-box:fill-box;transform-origin:center;animation:rise .55s both;animation-delay:calc(var(--i)*90ms)}
 .intro .ed,.intro .lb{animation:fade .7s .45s both}
 @keyframes rise{from{opacity:0;transform:translateY(14px) scale(.9)}}
