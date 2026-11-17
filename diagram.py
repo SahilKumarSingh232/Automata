@@ -86,14 +86,15 @@ function flow(done){
   })(t0);
 }
 const cur=new Set(D.active),usedSet=new Set(D.used.map(u=>u[0]+'>'+u[1]));
+const pathSet=new Set(D.traversed.map(u=>u[0]+'>'+u[1]));
 const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
-if(D.animate&&!reduce&&D.used.length){draw(new Set(D.prev),null,false);flow(()=>draw(cur,usedSet,false));}
-else draw(cur,usedSet,D.intro);
+if(D.animate&&!reduce&&D.used.length){draw(new Set(D.prev),pathSet,false);flow(()=>draw(cur,pathSet,false));}
+else draw(cur,pathSet,D.intro);
 </script>
 """
 
 
-def diagram_html(auto, active, used, prev=(), symbol=None, animate=False, intro=False):
+def diagram_html(auto, active, used, prev=(), symbol=None, animate=False, intro=False, traversed=None):
     """Return the HTML for the diagram of `auto` with the given highlighted states/edges."""
     tips = []
     for i in range(auto.n):
@@ -104,6 +105,7 @@ def diagram_html(auto, active, used, prev=(), symbol=None, animate=False, intro=
         "trans": [list(t) for t in auto.trans], "tips": tips,
         "active": sorted(active), "prev": sorted(prev),
         "used": [list(u) for u in sorted(used)], "symbol": symbol,
+        "traversed": [list(u) for u in sorted(used if traversed is None else traversed)],
         "animate": bool(animate), "intro": bool(intro),
     }
     payload = json.dumps(data).replace("</", "<\\/")

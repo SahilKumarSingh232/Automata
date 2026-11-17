@@ -550,6 +550,11 @@ stage = st.empty()
 def render(idx):
 
     s = steps[idx]
+    traversed = frozenset(
+        edge
+        for step in steps[:idx + 1]
+        for edge in step.used
+    )
 
     animate = (
         idx > 0 and S.get("shown") == idx - 1
@@ -589,7 +594,8 @@ def render(idx):
                 prev,
                 s.symbol,
                 animate,
-                S.pop("intro", False)
+                S.pop("intro", False),
+                traversed=traversed
             ),
             height=HEIGHT
         )
