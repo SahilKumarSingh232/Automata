@@ -19,3 +19,7 @@ The alphabet is inferred from the symbols in the rules unless you enter one
 explicitly. Test strings containing other symbols are rejected. Count and
 divisor limits are capped at 500, and positions from the end at 8 to keep the
 generated machines manageable.
+
+Generated deterministic machines are minimized before drawing, so equivalent
+states are merged and the diagram stays as small as possible. NFA and ε-NFA
+selections also keep this compact graph rather than adding extra ε-only states.

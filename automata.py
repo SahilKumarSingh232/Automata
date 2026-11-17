@@ -180,7 +180,62 @@ def _to_dfa(nfa):
         i += 1
     accept = {k for k, s in enumerate(sets) if s & nfa.accept}
     labels = [f"q{k}" if s else "dead" for k, s in enumerate(sets)]
-    return Automaton("DFA", len(sets), accept, trans, labels, nfa.alphabet)
+    return _minimize_dfa(Automaton("DFA", len(sets), accept, trans, labels, nfa.alphabet))
+
+
+def _minimize_dfa(dfa):
+    """Return an equivalent complete DFA with only reachable, distinct states."""
+    transitions = {(a, symbol): b for a, symbol, b in dfa.trans}
+    reachable, queue = {dfa.start}, [dfa.start]
+    for state in queue:
+        for symbol in dfa.alphabet:
+            target = transitions[(state, symbol)]
+            if target not in reachable:
+                reachable.add(target)
+                queue.append(target)
+
+    partitions = [group for group in (reachable & dfa.accept, reachable - dfa.accept) if group]
+    while True:
+        block_of = {state: i for i, group in enumerate(partitions) for state in group}
+        groups = {}
+        for state in reachable:
+            signature = (state in dfa.accept,
+                         tuple(block_of[transitions[(state, symbol)]] for symbol in dfa.alphabet))
+            groups.setdefault(signature, set()).add(state)
+        refined = list(groups.values())
+        if {frozenset(group) for group in refined} == {frozenset(group) for group in partitions}:
+            partitions = refined
+            break
+        partitions = refined
+
+    block_of = {state: i for i, group in enumerate(partitions) for state in group}
+    start_block = block_of[dfa.start]
+    order, seen, queue = [], {start_block}, [start_block]
+    representatives = [min(group) for group in partitions]
+    while queue:
+        block = queue.pop(0)
+        order.append(block)
+        state = representatives[block]
+        for symbol in dfa.alphabet:
+            target = block_of[transitions[(state, symbol)]]
+            if target not in seen:
+                seen.add(target)
+                queue.append(target)
+
+    new_index = {block: i for i, block in enumerate(order)}
+    minimized_trans = []
+    minimized_accept = set()
+    for block in order:
+        source = new_index[block]
+        state = representatives[block]
+        if state in dfa.accept:
+            minimized_accept.add(source)
+        for symbol in dfa.alphabet:
+            target = block_of[transitions[(state, symbol)]]
+            minimized_trans.append((source, symbol, new_index[target]))
+    labels = [f"q{i}" for i in range(len(order))]
+    return Automaton("DFA", len(order), minimized_accept, minimized_trans, labels,
+                     dfa.alphabet, start=0)
 
 
 def build(word, alphabet, kind, mode):
@@ -465,10 +520,12 @@ def build_custom(alphabet, kind, conditions, logic="AND", empty_string="Either")
         dfa = _combine_dfas([dfa, _empty_string_machine(alphabet, True)], alphabet, "OR")
     elif empty_string == "Reject":
         dfa = _combine_dfas([dfa, _empty_string_machine(alphabet, False)], alphabet, "AND")
+    dfa = _minimize_dfa(dfa)
     if kind == "DFA":
         return dfa
-    nfa = Automaton("NFA", dfa.n, dfa.accept, dfa.trans, dfa.labels, alphabet, dfa.start)
-    return _to_eps(nfa) if kind == "ENFA" else nfa
+    # A DFA is also a valid NFA/ε-NFA. Keep the minimized state graph for all
+    # selected types instead of expanding every edge into extra ε-states.
+    return Automaton(kind, dfa.n, dfa.accept, dfa.trans, dfa.labels, alphabet, dfa.start)
 
 
 def suggestions(word, alphabet):
